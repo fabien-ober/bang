@@ -293,15 +293,15 @@ button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
     S.resolved = false; S.locked = true; S.state = 'wait';
     if(S.mode === 'solo'){ setPoncho(sides.top.cow, PONCHOS[S.level - 1]); }
     setCow('top'); setCow('bot');
-    setText('top', 'Prêts…', S.mode === 'solo' ? NAMES[S.level - 1] : '', '');
-    setText('bot', 'Prêts…', S.mode === 'solo' ? (S.attempt > 1 ? 'Essai ' + S.attempt : '') : '', '');
+    setText('top', 'Ready…', S.mode === 'solo' ? NAMES[S.level - 1] : '', '');
+    setText('bot', 'Ready…', S.mode === 'solo' ? (S.attempt > 1 ? 'Essai ' + S.attempt : '') : '', '');
     renderBand();
     tone(330, 0.12, 'square', 0.08);
     later(function(){
       if(S.state !== 'wait') return;
       setCow('top','steady'); setCow('bot','steady');
-      setText('top', 'Attention…', S.mode === 'solo' ? NAMES[S.level - 1] : '', '');
-      setText('bot', 'Attention…', '', '');
+      setText('top', 'Steady…', S.mode === 'solo' ? NAMES[S.level - 1] : '', '');
+      setText('bot', 'Steady…', '', '');
       tone(440, 0.12, 'square', 0.08);
     }, 1000);
     later(bang, 1900 + Math.random() * 2600);
@@ -311,8 +311,8 @@ button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
     if(S.state !== 'wait') return;
     S.state = 'live';
     S.tBang = performance.now();
-    setText('top', 'FEU !', '', '', 'var(--ink)');
-    setText('bot', 'FEU !', '', '', 'var(--ink)');
+    setText('top', 'BANG !', '', '', 'var(--ink)');
+    setText('bot', 'BANG !', '', '', 'var(--ink)');
     flash();
     tone(880, 0.18, 'square', 0.12);
     if(S.mode === 'solo'){
