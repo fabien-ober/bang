@@ -1,0 +1,10 @@
+DUEL EXPRESS - mise en ligne sur GitHub Pages
+
+1. Sur github.com, créez un dépôt PUBLIC (bouton "New"), par exemple nommé duel-express.
+2. Sur la page du dépôt : "Add file" > "Upload files", glissez-déposez TOUS les fichiers de ce dossier
+   (index.html, manifest.webmanifest, sw.js, les trois .png), puis "Commit changes".
+3. Onglet "Settings" > "Pages" : Source = "Deploy from a branch", branche "main", dossier "/ (root)", "Save".
+4. Après une à deux minutes, l'adresse apparaît en haut de la page Pages :
+   https://VOTRE-PSEUDO.github.io/duel-express/
+5. Sur le téléphone, ouvrez cette adresse dans Chrome, menu (trois points) > "Installer l'application"
+   (ou "Ajouter à l'écran d'accueil"). Le jeu s'ouvre ensuite en plein écran et fonctionne hors ligne.

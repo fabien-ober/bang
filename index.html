@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Duel Express</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1C1B19">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Archivo:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+/* Mise en page : deux moitiés miroir autour d'une ligne d'horizon, une seule couleur vive (le rouge du FEU). */
+:root{
+  --paper:#F2F0EA;
+  --sand:#DDD8CB;
+  --ink:#1C1B19;
+  --dust:#7C776B;
+  --flare:#E2412B;
+  --sun:#F2B632;
+  --display:'Alfa Slab One', Georgia, serif;
+  --body:'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--paper);color:var(--ink);font-family:var(--body);overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+#app{height:100%;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+
+.half{flex:1;min-height:0;position:relative;overflow:hidden;touch-action:none;cursor:pointer;background:var(--paper)}
+.half.top{background:var(--sand);transform:rotate(180deg)}
+.half.inactive{pointer-events:none;cursor:default}
+.half::after{content:"";position:absolute;inset:0;background:var(--flare);opacity:0;pointer-events:none;z-index:1}
+.half.flashing::after{animation:fl .5s ease-out}
+@keyframes fl{0%{opacity:.9}100%{opacity:0}}
+
+.cow{position:absolute;left:50%;top:4%;height:min(60%,300px);aspect-ratio:3/4;transform:translateX(-50%);z-index:2}
+.cow svg{display:block;height:100%;width:100%;overflow:visible}
+.poncho{fill:var(--poncho)}
+.poncho-d{fill:var(--poncho-dark)}
+.ink{fill:var(--ink)}
+.skin{fill:#E9D3B4}
+.fig{transform-origin:60px 154px;transition:transform .35s cubic-bezier(.2,.7,.2,1)}
+.arm{transform-origin:84px 70px;transition:transform .06s linear}
+.hat{transform-origin:60px 30px;transition:transform .45s cubic-bezier(.2,.7,.2,1)}
+.muzzle{fill:var(--sun);opacity:0;transition:opacity .05s}
+.xeyes{display:none}
+.cow.steady .arm{transform:rotate(-14deg)}
+.cow.aim .arm{transform:rotate(200deg)}
+.cow.fire .muzzle{opacity:1}
+.cow.dead .fig{transform:translate(16px,8px) rotate(-74deg)}
+.cow.dead .hat{transform:translate(16px,-30px) rotate(46deg)}
+.cow.dead .eyes{display:none}
+.cow.dead .xeyes{display:block}
+
+.hud{position:absolute;left:0;right:0;bottom:5%;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:0 16px;z-index:2}
+.msg{font-family:var(--display);font-size:clamp(34px,11vw,64px);line-height:1;text-wrap:balance;min-height:1em}
+.sub{font-size:15px;font-weight:600;color:var(--dust);min-height:1.3em;font-variant-numeric:tabular-nums}
+.hint{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;min-height:1.2em}
+.hint.on{animation:blink 1.2s ease-in-out infinite}
+@keyframes blink{50%{opacity:.35}}
+
+.band{flex:none;height:46px;background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.band .info{flex:1;text-align:center;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.band button{background:none;border:1px solid #55524a;color:var(--paper);font:inherit;font-size:13px;padding:6px 12px;border-radius:8px;cursor:pointer;min-width:64px}
+.band button:hover{background:#2c2b28}
+
+button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+
+.overlay{position:fixed;inset:0;background:var(--paper);z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:max(16px,env(safe-area-inset-top)) 20px max(16px,env(safe-area-inset-bottom));overflow:auto}
+.overlay[hidden]{display:none}
+.ov-cow{height:min(17vh,130px);aspect-ratio:3/4;flex:none}
+.ov-cow svg{display:block;height:100%;width:100%;overflow:visible}
+.ov-cow.flip{transform:rotate(180deg)}
+.ov-body{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;max-width:420px;width:100%;padding:8px 0}
+.title{font-family:var(--display);font-size:clamp(40px,13vw,72px);line-height:.92;text-wrap:balance}
+.title span{color:var(--flare);display:block}
+.lead{font-size:16px;line-height:1.45;color:#3b3934;max-width:34ch}
+.best{font-size:14px;font-weight:600;color:var(--dust);font-variant-numeric:tabular-nums}
+.btns{display:flex;flex-direction:column;gap:10px;width:100%;max-width:320px}
+.btn{font:inherit;font-weight:800;font-size:17px;padding:15px 18px;border-radius:12px;border:2px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer}
+.btn.alt{background:transparent;color:var(--ink)}
+.btn:active{transform:translateY(1px)}
+.rules{font-size:13px;color:var(--dust);line-height:1.5;max-width:36ch}
+
+@media (prefers-reduced-motion:reduce){
+  .hint.on{animation:none}
+  .fig,.hat,.arm{transition:none}
+  .half.flashing::after{animation-duration:.01s}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top" class="half top inactive" role="button" aria-label="Joueur du haut : touchez pour tirer"></div>
+  <div class="band">
+    <button id="menuBtn" type="button">Menu</button>
+    <div class="info" id="info" aria-live="polite"></div>
+    <button id="soundBtn" type="button" aria-pressed="false">Son : oui</button>
+  </div>
+  <div id="bot" class="half bot" role="button" aria-label="Joueur du bas : touchez pour tirer"></div>
+</div>
+
+<div id="overlay" class="overlay">
+  <div class="ov-cow flip" id="ovCowTop"></div>
+  <div class="ov-body" id="ovBody"></div>
+  <div class="ov-cow" id="ovCowBot"></div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var NAMES = ['Tumbleweed','Slim Bidon','Jo Poussière','Mad Moustache','Lola Fumée','Grand Silence','Le Corbeau','Shérif Éclair','Veuve Noire',"L'Ombre"];
+  var PONCHOS = ['#C9A24A','#4F7A6B','#6E5B9A','#C47A2C','#3E6A9A','#9A3E5B','#5F6B3A','#A04A2A','#7A7468','#2B2B2B'];
+  var PLAYER_PONCHO = '#E2412B';
+  var DUO_TOP_PONCHO = '#3E6A9A';
+  var WIN_SCORE = 3;
+  var LEVELS = 10;
+
+  /* ---------- Utilitaires ---------- */
+  function darken(hex, k){
+    var n = parseInt(hex.slice(1), 16);
+    var r = Math.round(((n >> 16) & 255) * (1 - k));
+    var g = Math.round(((n >> 8) & 255) * (1 - k));
+    var b = Math.round((n & 255) * (1 - k));
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }
+  function $(s){ return document.querySelector(s); }
+
+  function cowboySVG(){
+    return '<svg viewBox="0 0 120 160" aria-hidden="true" focusable="false">' +
+      '<ellipse cx="60" cy="155" rx="36" ry="4" fill="#1C1B19" opacity=".14"/>' +
+      '<g class="fig">' +
+        '<rect class="ink" x="44" y="104" width="14" height="46"/>' +
+        '<rect class="ink" x="62" y="104" width="14" height="46"/>' +
+        '<rect class="ink" x="39" y="146" width="21" height="9" rx="2"/>' +
+        '<rect class="ink" x="60" y="146" width="21" height="9" rx="2"/>' +
+        '<rect class="poncho-d" x="26" y="66" width="12" height="38" rx="5"/>' +
+        '<rect class="poncho" x="38" y="62" width="44" height="46" rx="4"/>' +
+        '<rect class="ink" x="38" y="100" width="44" height="6"/>' +
+        '<rect x="56" y="98" width="8" height="10" rx="1" fill="#C9A24A"/>' +
+        '<g class="arm">' +
+          '<rect class="poncho-d" x="78" y="66" width="12" height="36" rx="5"/>' +
+          '<circle class="skin" cx="84" cy="104" r="6"/>' +
+          '<rect class="ink" x="80" y="104" width="8" height="18" rx="2"/>' +
+          '<polygon class="muzzle" points="84,122 90,130 99,128 92,136 97,146 84,139 71,146 76,136 69,128 78,130"/>' +
+        '</g>' +
+        '<rect class="skin" x="48" y="34" width="24" height="27" rx="6"/>' +
+        '<rect class="eyes ink" x="54" y="43" width="4" height="5"/>' +
+        '<rect class="eyes ink" x="63" y="43" width="4" height="5"/>' +
+        '<g class="xeyes"><path d="M53 42l6 6M59 42l-6 6M62 42l6 6M68 42l-6 6" stroke="#1C1B19" stroke-width="2" stroke-linecap="round" fill="none"/></g>' +
+        '<rect class="ink" x="52" y="52" width="16" height="4" rx="2"/>' +
+        '<g class="hat">' +
+          '<rect class="ink" x="32" y="30" width="56" height="6" rx="3"/>' +
+          '<rect class="ink" x="46" y="12" width="28" height="20" rx="3"/>' +
+          '<rect class="poncho" x="46" y="25" width="28" height="4"/>' +
+        '</g>' +
+      '</g></svg>';
+  }
+
+  /* ---------- Son ---------- */
+  var actx = null, muted = false;
+  function ensureAudio(){
+    try{
+      if(!actx){
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if(AC) actx = new AC();
+      }
+      if(actx && actx.state === 'suspended') actx.resume();
+    }catch(e){}
+  }
+  function tone(freq, dur, type, gain){
+    if(muted || !actx) return;
+    try{
+      var t = actx.currentTime;
+      var o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square';
+      o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(gain || 0.1, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(actx.destination);
+      o.start(t); o.stop(t + dur + 0.02);
+    }catch(e){}
+  }
+  function gunshot(){
+    if(muted || !actx) return;
+    try{
+      var t = actx.currentTime, len = Math.floor(actx.sampleRate * 0.3);
+      var buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
+      for(var i = 0; i < len; i++){ d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
+      var src = actx.createBufferSource(), g = actx.createGain();
+      src.buffer = buf; g.gain.value = 0.35;
+      src.connect(g); g.connect(actx.destination); src.start(t);
+      var o = actx.createOscillator(), og = actx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(150, t);
+      o.frequency.exponentialRampToValueAtTime(40, t + 0.2);
+      og.gain.setValueAtTime(0.4, t);
+      og.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+      o.connect(og); og.connect(actx.destination); o.start(t); o.stop(t + 0.25);
+    }catch(e){}
+  }
+
+  /* ---------- Stockage (facultatif) ---------- */
+  function loadBest(){ try{ var v = parseFloat(localStorage.getItem('duel-express-best')); return isFinite(v) ? v : null; }catch(e){ return null; } }
+  function saveBest(v){ try{ localStorage.setItem('duel-express-best', String(v)); }catch(e){} }
+
+  /* ---------- État ---------- */
+  var S = {
+    mode: 'solo', state: 'menu', level: 1, attempt: 1,
+    score: {top: 0, bot: 0}, timers: [], tBang: 0,
+    locked: true, resolved: false, lastWinner: null, best: loadBest()
+  };
+  function later(fn, ms){ var id = setTimeout(fn, ms); S.timers.push(id); return id; }
+  function clearTimers(){ S.timers.forEach(clearTimeout); S.timers = []; }
+
+  /* ---------- Construction des moitiés ---------- */
+  var sides = {};
+  ['top','bot'].forEach(function(side){
+    var el = document.getElementById(side);
+    el.innerHTML = '<div class="cow">' + cowboySVG() + '</div>' +
+      '<div class="hud"><div class="msg"></div><div class="sub"></div><div class="hint"></div></div>';
+    sides[side] = {
+      el: el, cow: el.querySelector('.cow'),
+      msg: el.querySelector('.msg'), sub: el.querySelector('.sub'), hint: el.querySelector('.hint')
+    };
+    el.addEventListener('pointerdown', function(e){ e.preventDefault(); onTap(side); });
+    el.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  });
+  $('#ovCowTop').innerHTML = cowboySVG();
+  $('#ovCowBot').innerHTML = cowboySVG();
+  [$('#ovCowTop'), $('#ovCowBot')].forEach(function(c, i){ setPoncho(c, i ? PLAYER_PONCHO : DUO_TOP_PONCHO); });
+
+  function setPoncho(el, hex){
+    el.style.setProperty('--poncho', hex);
+    el.style.setProperty('--poncho-dark', darken(hex, 0.2));
+  }
+  function setCow(side, st){
+    var c = sides[side].cow;
+    c.classList.remove('steady','aim','fire','dead');
+    if(st === 'steady') c.classList.add('steady');
+    if(st === 'shoot') c.classList.add('aim','fire');
+    if(st === 'dead') c.classList.add('dead');
+  }
+  function setText(side, msg, sub, hint, cls){
+    var s = sides[side];
+    s.msg.textContent = msg || '';
+    s.msg.style.color = cls || '';
+    s.sub.textContent = sub || '';
+    s.hint.textContent = hint || '';
+    s.hint.classList.toggle('on', !!hint);
+  }
+  function flash(){
+    ['top','bot'].forEach(function(k){
+      var el = sides[k].el;
+      el.classList.remove('flashing');
+      void el.offsetWidth;
+      el.classList.add('flashing');
+    });
+  }
+  function renderBand(){
+    var t;
+    if(S.state === 'menu'){ t = 'Duel Express'; }
+    else if(S.mode === 'solo'){ t = 'Duel ' + S.level + '/' + LEVELS + ' · ' + NAMES[S.level - 1]; }
+    else { t = 'Haut ' + S.score.top + ' · Bas ' + S.score.bot + ' (premier à ' + WIN_SCORE + ')'; }
+    $('#info').textContent = t;
+  }
+
+  /* ---------- Déroulement ---------- */
+  function cpuReaction(l){
+    var base = 620 - (l - 1) * (620 - 235) / (LEVELS - 1);
+    return Math.max(180, base + (Math.random() * 2 - 1) * 35);
+  }
+
+  function newGame(mode){
+    ensureAudio();
+    clearTimers();
+    S.mode = mode; S.level = 1; S.attempt = 1; S.score = {top: 0, bot: 0}; S.lastWinner = null;
+    sides.top.el.classList.toggle('inactive', mode === 'solo');
+    setPoncho(sides.bot.cow, PLAYER_PONCHO);
+    if(mode === 'solo'){ setPoncho(sides.top.cow, PONCHOS[0]); }
+    else { setPoncho(sides.top.cow, DUO_TOP_PONCHO); }
+    $('#overlay').hidden = true;
+    startRound();
+  }
+
+  function startRound(){
+    clearTimers();
+    S.resolved = false; S.locked = true; S.state = 'wait';
+    if(S.mode === 'solo'){ setPoncho(sides.top.cow, PONCHOS[S.level - 1]); }
+    setCow('top'); setCow('bot');
+    setText('top', 'Prêts…', S.mode === 'solo' ? NAMES[S.level - 1] : '', '');
+    setText('bot', 'Prêts…', S.mode === 'solo' ? (S.attempt > 1 ? 'Essai ' + S.attempt : '') : '', '');
+    renderBand();
+    tone(330, 0.12, 'square', 0.08);
+    later(function(){
+      if(S.state !== 'wait') return;
+      setCow('top','steady'); setCow('bot','steady');
+      setText('top', 'Attention…', S.mode === 'solo' ? NAMES[S.level - 1] : '', '');
+      setText('bot', 'Attention…', '', '');
+      tone(440, 0.12, 'square', 0.08);
+    }, 1000);
+    later(bang, 1900 + Math.random() * 2600);
+  }
+
+  function bang(){
+    if(S.state !== 'wait') return;
+    S.state = 'live';
+    S.tBang = performance.now();
+    setText('top', 'FEU !', '', '', 'var(--ink)');
+    setText('bot', 'FEU !', '', '', 'var(--ink)');
+    flash();
+    tone(880, 0.18, 'square', 0.12);
+    if(S.mode === 'solo'){
+      var r = cpuReaction(S.level);
+      later(function(){ if(S.state === 'live') resolve('top', r, false); }, r);
+    }
+  }
+
+  function onTap(side){
+    if(S.state === 'wait'){
+      resolve(side === 'top' ? 'bot' : 'top', 0, true, side);
+    } else if(S.state === 'live'){
+      resolve(side, performance.now() - S.tBang, false, null);
+    } else if(S.state === 'over' && !S.locked){
+      next();
+    }
+  }
+
+  function resolve(winner, rt, foul, fouler){
+    if(S.resolved) return;
+    S.resolved = true; clearTimers();
+    S.state = 'over'; S.locked = true; S.lastWinner = winner;
+    var loser = winner === 'top' ? 'bot' : 'top';
+    setCow(winner, 'shoot'); setCow(loser, 'dead');
+    gunshot();
+    try{ if(navigator.vibrate) navigator.vibrate(foul ? 0 : 30); }catch(e){}
+    var ms = Math.round(rt);
+    var hintWin = 'Touchez pour continuer';
+
+    if(S.mode === 'solo'){
+      if(winner === 'bot'){
+        var rec = '';
+        if(S.best === null || ms < S.best){ S.best = ms; saveBest(ms); rec = ' · record !'; }
+        setText('bot', 'Gagné !', ms + ' ms' + rec, S.level === LEVELS ? 'Touchez pour la suite' : 'Touchez pour le duel suivant');
+        setText('top', 'Touché', '', '');
+      } else if(foul){
+        setText('bot', 'Trop tôt !', 'Attendez le FEU', 'Touchez pour retenter');
+        setText('top', 'Gagné', '', '');
+      } else {
+        setText('bot', 'Trop lent', NAMES[S.level - 1] + ' : ' + ms + ' ms', 'Touchez pour retenter');
+        setText('top', 'Gagné', '', '');
+      }
+    } else {
+      S.score[winner]++;
+      if(foul){
+        setText(fouler, 'Trop tôt !', 'Faute', '');
+        setText(winner, 'Gagné', 'Faute adverse', hintWin);
+        if(fouler === 'bot' || fouler === 'top'){ sides[fouler].hint.textContent = hintWin; sides[fouler].hint.classList.add('on'); }
+      } else {
+        setText(winner, 'Gagné !', ms + ' ms', hintWin);
+        setText(loser, 'Perdu', '', hintWin);
+      }
+    }
+    renderBand();
+    later(function(){ S.locked = false; }, 800);
+  }
+
+  function next(){
+    if(S.mode === 'solo'){
+      if(S.lastWinner === 'bot'){
+        if(S.level === LEVELS){ showFinal('solo'); return; }
+        S.level++; S.attempt = 1;
+      } else {
+        S.attempt++;
+      }
+      startRound();
+    } else {
+      if(S.score.top >= WIN_SCORE || S.score.bot >= WIN_SCORE){ showFinal('duo'); return; }
+      startRound();
+    }
+  }
+
+  /* ---------- Écrans ---------- */
+  function bestLine(){ return S.best !== null ? 'Meilleur temps : ' + S.best + ' ms' : 'Pas encore de record'; }
+
+  function showMenu(){
+    clearTimers();
+    S.state = 'menu';
+    renderBand();
+    var o = $('#ovBody');
+    o.innerHTML =
+      '<h1 class="title">Duel<span>Express</span></h1>' +
+      '<p class="lead">Touchez l’écran dès que vous voyez FEU. Trop tôt, et c’est vous qui tombez.</p>' +
+      '<div class="btns">' +
+        '<button class="btn" id="bSolo" type="button">Contre l’ordinateur</button>' +
+        '<button class="btn alt" id="bDuo" type="button">À deux, même écran</button>' +
+      '</div>' +
+      '<div class="best">' + bestLine() + '</div>' +
+      '<p class="rules">Seul : 10 adversaires, de plus en plus rapides. À deux : posez le téléphone à plat, chacun touche sa moitié. Premier à 3 victoires.</p>';
+    $('#bSolo').addEventListener('click', function(){ newGame('solo'); });
+    $('#bDuo').addEventListener('click', function(){ newGame('duo'); });
+    $('#overlay').hidden = false;
+  }
+
+  function showFinal(kind){
+    clearTimers();
+    S.state = 'menu';
+    var o = $('#ovBody'), head, sub;
+    if(kind === 'solo'){
+      head = 'Le shérif, <span>c’est vous.</span>';
+      sub = 'Les 10 duels sont gagnés.<br>' + bestLine();
+    } else {
+      var w = S.score.top > S.score.bot ? 'haut' : 'bas';
+      head = 'Victoire <span>du joueur ' + w + '.</span>';
+      sub = S.score.top + ' à ' + S.score.bot + ' (haut – bas)';
+    }
+    o.innerHTML =
+      '<h1 class="title">' + head + '</h1>' +
+      '<p class="lead">' + sub + '</p>' +
+      '<div class="btns">' +
+        '<button class="btn" id="bAgain" type="button">Rejouer</button>' +
+        '<button class="btn alt" id="bMenu" type="button">Menu</button>' +
+      '</div>';
+    var mode = S.mode;
+    $('#bAgain').addEventListener('click', function(){ newGame(mode); });
+    $('#bMenu').addEventListener('click', showMenu);
+    $('#overlay').hidden = false;
+  }
+
+  /* ---------- Contrôles ---------- */
+  $('#menuBtn').addEventListener('click', showMenu);
+  $('#soundBtn').addEventListener('click', function(){
+    muted = !muted;
+    this.textContent = muted ? 'Son : non' : 'Son : oui';
+    this.setAttribute('aria-pressed', muted ? 'true' : 'false');
+    if(!muted){ ensureAudio(); tone(660, 0.08, 'square', 0.08); }
+  });
+  document.addEventListener('keydown', function(e){
+    if(!$('#overlay').hidden) return;
+    if(e.repeat) return;
+    if(e.code === 'Space' || e.code === 'ArrowDown' || e.key === 'j'){ e.preventDefault(); onTap('bot'); }
+    else if((e.code === 'ArrowUp' || e.key === 'f') && S.mode === 'duo'){ e.preventDefault(); onTap('top'); }
+  });
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden && S.state !== 'menu') showMenu();
+  });
+
+  showMenu();
+  try{ if('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(function(){}); }catch(e){}
+})();
+</script>
+</body>
+</html>
